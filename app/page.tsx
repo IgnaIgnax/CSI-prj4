@@ -108,9 +108,9 @@ export default function HomePage() {
         }), {})
       }
       
-      console.log('Sending payload:', payload) // Debug
-
-      const response = await fetch('http://localhost:8000/analyze', {
+      // Usa la variabile d'ambiente per l'URL dell'API
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${apiUrl}/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
