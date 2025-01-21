@@ -17,8 +17,8 @@ app.add_middleware(
         # Aggiungi altri domini se necessario
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],  # Specifica solo i metodi necessari
-    allow_headers=["Content-Type", "Accept"],  # Specifica solo gli headers necessari
+    allow_methods=["GET", "POST", "OPTIONS"],  # Aggiungi OPTIONS
+    allow_headers=["*"],  # Permetti tutti gli headers per il debug
 )
 
 class BloodParameters(BaseModel):
