@@ -92,32 +92,22 @@ export default function HomePage() {
         }
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/analyze`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}:8080/analyze`;
       console.log('Sending request to:', apiUrl);
       
       const response = await fetch(apiUrl, {
         method: 'POST',
-        mode: 'no-cors', // Importante: usa no-cors
-        cache: 'no-cache',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok && response.status !== 0) { // Status 0 è normale con no-cors
+      if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      let data;
-      try {
-        data = await response.json();
-      } catch (e) {
-        console.log('Response not JSON, trying text');
-        const text = await response.text();
-        data = JSON.parse(text);
-      }
-
+      const data = await response.json();
       const filteredRecommendations = filterFoodsByDietAndAllergies(data, values.diet, values.allergies);
       setRecommendations(filteredRecommendations);
       setShowResults(true);
