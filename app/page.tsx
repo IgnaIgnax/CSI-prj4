@@ -262,7 +262,7 @@ export default function HomePage() {
       "Fish and Seafood": [
         "fish", "seafood", "tuna", "salmon", "cod", "anchovy", "bass", 
         "bream", "clam", "crab", "mussel", "oyster", "shrimp", "lobster",
-        "octopus", "eel", "mackerel", "sardine", "scallop", "sole"
+        "octopus", "eel", "mackerel", "sardine", "scallop", "sole", "squid"
       ],
       "Dairy Products": [
         "milk", "cheese", "butter", "yogurt", "dairy"
