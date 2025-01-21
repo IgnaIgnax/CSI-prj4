@@ -57,18 +57,21 @@ export default function HomePage() {
   })
 
   const handleInputChange = (field: string, value: string) => {
+    // Sostituisce la virgola con il punto per i valori decimali
+    const normalizedValue = value.replace(',', '.');
+    
     if (field.startsWith("Blood_")) {
       setValues(prev => ({
         ...prev,
         bloodValues: {
           ...prev.bloodValues,
-          [field]: value
+          [field]: normalizedValue
         }
       }))
     } else {
       setValues(prev => ({
         ...prev,
-        [field]: value
+        [field]: normalizedValue
       }))
     }
   }
@@ -76,10 +79,24 @@ export default function HomePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Controlla se ci sono valori pericolosi
-    if (hasDangerValues()) {
-      alert("Non è possibile procedere con l'analisi quando sono presenti valori critici. Si prega di consultare un medico.");
-      return;
+    const age = parseInt(values.age)
+    if (age < 10 || age > 95) {
+      alert('Age must be between 10 and 95 years.')
+      setShowResults(false)
+      setRecommendations([])
+      return
+    }
+
+    // Controlla se ci sono valori critici
+    const hasCriticalValues = Object.entries(values.bloodValues).some(
+      ([field, value]) => isDangerRange(field, value as string)
+    );
+
+    if (hasCriticalValues) {
+      alert('Warning: some values are outside the normal range. It is recommended to consult a doctor before proceeding with the analysis.')
+      setShowResults(false)
+      setRecommendations([])
+      return
     }
 
     setLoading(true)
@@ -88,75 +105,58 @@ export default function HomePage() {
       const payload = {
         age: parseInt(values.age),
         sex: values.sex,
-        blood_values: {
-          Blood_Colesterolo: parseFloat(values.bloodValues.Blood_Colesterolo),
-          Blood_Colesterolo_HDL: parseFloat(values.bloodValues.Blood_Colesterolo_HDL),
-          Blood_Trigliceridi: parseFloat(values.bloodValues.Blood_Trigliceridi),
-          Blood_Glucosio: parseFloat(values.bloodValues.Blood_Glucosio),
-          Blood_Vitamina_D: parseFloat(values.bloodValues.Blood_Vitamina_D),
-          Blood_Ferro: parseFloat(values.bloodValues.Blood_Ferro),
-          Blood_Creatinina: parseFloat(values.bloodValues.Blood_Creatinina)
-        }
+        blood_values: Object.entries(values.bloodValues).reduce((acc, [key, value]) => ({
+          ...acc,
+          [key]: parseFloat(value as string)
+        }), {})
       }
+      
+      console.log('Sending payload:', payload) // Debug
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/analyze`;
-      console.log('Sending request to:', apiUrl);
-      console.log('Payload:', JSON.stringify(payload, null, 2));
-
-      const response = await fetch(apiUrl, {
+      const response = await fetch('http://localhost:8000/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        },
+        }, 
         body: JSON.stringify(payload)
-      });
-
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      })
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+        const errorText = await response.text()
+        console.error('Server response:', errorText)
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`)
       }
 
-      const responseText = await response.text();
-      console.log('Response text:', responseText);
-
-      let data;
-      try {
-        data = responseText ? JSON.parse(responseText) : null;
-        if (!data) {
-          throw new Error('Empty response from server');
-        }
-        if (!Array.isArray(data)) {
-          throw new Error('Invalid response format from server');
-        }
-      } catch (e) {
-        console.error('Failed to parse response:', e);
-        throw new Error('Invalid response format from server');
-      }
-
+      const data = await response.json()
+      console.log('Received data:', data) // Debug
+      
+      // Usa la nuova funzione che considera sia dieta che allergie
       const filteredRecommendations = filterFoodsByDietAndAllergies(data, values.diet, values.allergies);
-      if (!Array.isArray(filteredRecommendations)) {
-        throw new Error('Invalid recommendations format');
-      }
-
       setRecommendations(filteredRecommendations);
       setShowResults(true);
-
-    } catch (error: any) {
-      console.error('Error details:', error);
-      alert(`An error occurred during the analysis: ${error.message}`);
+    } catch (error) {
+      console.error('Error details:', error)
+      alert('An error occurred during the analysis. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
   const isWarningRange = (field: string, value: string): boolean => {
-    const numValue = parseFloat(value);
-    if (!numValue) return false;
+    const normalizedValue = value.replace(',', '.');
+    const numValue = parseFloat(normalizedValue);
+    if (isNaN(numValue)) return false;
+    
+    if (field === 'Blood_Creatinina') {
+      console.log('Checking creatinine warning range:', {
+        field,
+        value,
+        normalizedValue,
+        numValue,
+        sex: values.sex
+      });
+    }
     
     switch (field) {
       case 'Blood_Ferro':
@@ -174,7 +174,9 @@ export default function HomePage() {
       case 'Blood_Glucosio':
         return (numValue >= 50 && numValue <= 69) || (numValue >= 100 && numValue <= 125);
       case 'Blood_Creatinina':
-        return (numValue >= 0.4 && numValue < 0.7) || (numValue > 1.2 && numValue <= 2);
+        return values.sex === 'M'
+          ? (numValue >= 0.4 && numValue < 0.7) || (numValue > 1.2 && numValue <= 2)
+          : (numValue >= 0.4 && numValue < 0.6) || (numValue > 1.1 && numValue <= 2);
       case 'Blood_Vitamina_D':
         return (numValue >= 10 && numValue <= 29) || (numValue >= 50 && numValue <= 70);
       default:
@@ -183,8 +185,19 @@ export default function HomePage() {
   };
 
   const isDangerRange = (field: string, value: string): boolean => {
-    const numValue = parseFloat(value);
-    if (!numValue) return false;
+    const normalizedValue = value.replace(',', '.');
+    const numValue = parseFloat(normalizedValue);
+    if (isNaN(numValue)) return false;
+    
+    if (field === 'Blood_Creatinina') {
+      console.log('Checking creatinine danger range:', {
+        field,
+        value,
+        normalizedValue,
+        numValue,
+        sex: values.sex
+      });
+    }
     
     switch (field) {
       case 'Blood_Ferro':
@@ -202,7 +215,9 @@ export default function HomePage() {
       case 'Blood_Glucosio':
         return numValue < 50 || numValue > 125;
       case 'Blood_Creatinina':
-        return numValue < 0.4 || numValue > 2;
+        return values.sex === 'M'
+          ? numValue < 0.4 || numValue > 2
+          : numValue < 0.4 || numValue > 2;
       case 'Blood_Vitamina_D':
         return numValue < 10 || numValue > 100;
       default:
@@ -668,10 +683,10 @@ export default function HomePage() {
                       className="w-full bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white border-none transition-all duration-300 transform hover:scale-[1.02] py-6 text-lg font-medium shadow-lg hover:shadow-xl rounded-xl" 
                       disabled={loading}
                     >
-                      <div className="flex items-center justify-center gap-3">
+                      <div className="flex items-center justify-center gap-3" role="presentation">
                         {loading ? (
                           <>
-                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" role="presentation"></div>
                             <span>Analysis in progress...</span>
                           </>
                         ) : (
