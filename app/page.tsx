@@ -94,27 +94,54 @@ export default function HomePage() {
 
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/analyze`;
       console.log('Sending request to:', apiUrl);
-      
+      console.log('Payload:', JSON.stringify(payload, null, 2));
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify(payload)
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
-      const data = await response.json();
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+
+      let data;
+      try {
+        data = responseText ? JSON.parse(responseText) : null;
+        if (!data) {
+          throw new Error('Empty response from server');
+        }
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid response format from server');
+        }
+      } catch (e) {
+        console.error('Failed to parse response:', e);
+        throw new Error('Invalid response format from server');
+      }
+
       const filteredRecommendations = filterFoodsByDietAndAllergies(data, values.diet, values.allergies);
+      if (!Array.isArray(filteredRecommendations)) {
+        throw new Error('Invalid recommendations format');
+      }
+
       setRecommendations(filteredRecommendations);
       setShowResults(true);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error details:', error);
-      alert('An error occurred during the analysis. Please try again.');
+      alert(`An error occurred during the analysis: ${error.message}`);
     } finally {
       setLoading(false)
     }
