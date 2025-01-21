@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import joblib
 import pandas as pd
-from typing import Dict, List
+from typing import Dict, List, Any
 import os
 import logging
 
@@ -121,7 +121,7 @@ async def startup_event():
         logger.error(f"Startup error: {str(e)}")
         raise e
 
-class BloodParameters(BaseModel):
+class BloodData(BaseModel):
     age: int
     sex: str
     blood_values: Dict[str, float]
@@ -165,14 +165,27 @@ def get_age_range_file(age: int) -> str:
         raise ValueError("Età non supportata. L'età deve essere compresa tra 10 e 95 anni.")
 
 @app.post("/analyze")
-async def analyze_blood_values(data: dict):
+async def analyze_blood_values(data: BloodData):
     try:
-        logger.info(f"Received data: {data}")
-        # ... resto del codice di analisi ...
+        logger.info(f"Received data: {data.dict()}")
+        
+        result = process_blood_values(data.dict())
+        
+        if not result:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "No results generated"}
+            )
+            
+        logger.info(f"Sending response: {result}")
+        return result  # FastAPI gestirà automaticamente la serializzazione JSON
         
     except Exception as e:
         logger.error(f"Error in analyze: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
 
 if __name__ == "__main__":
     import uvicorn
