@@ -10,13 +10,39 @@ import logging
 
 app = FastAPI()
 
-# Configurazione CORS più permissiva possibile
+# Configura il logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f">>> Incoming request: {request.method} {request.url}")  # Aggiungo print per debug
+    logger.info(f">>> Incoming request: {request.method} {request.url}")
+    logger.info(f">>> Headers: {dict(request.headers)}")
+    
+    try:
+        response = await call_next(request)
+        print(f"<<< Response status: {response.status_code}")  # Aggiungo print per debug
+        logger.info(f"<<< Response status: {response.status_code}")
+        return response
+    except Exception as e:
+        print(f"!!! Error: {str(e)}")  # Aggiungo print per debug
+        logger.error(f"!!! Request failed: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e)}
+        )
+
+# CORS setup - messo dopo il middleware di logging
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permette tutte le origini
-    allow_credentials=False,  # Deve essere False quando allow_origins=["*"]
-    allow_methods=["*"],  # Permette tutti i metodi
-    allow_headers=["*"],  # Permette tutti gli headers
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"]
 )
 
 @app.middleware("http")
@@ -27,23 +53,6 @@ async def add_cors_headers(request: Request, call_next):
     response.headers["Access-Control-Allow-Headers"] = "*"
     return response
 
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    logger.info(f"Incoming request: {request.method} {request.url}")
-    logger.info(f"Headers: {request.headers}")
-    
-    try:
-        response = await call_next(request)
-        logger.info(f"Response status: {response.status_code}")
-        return response
-    except Exception as e:
-        logger.error(f"Request failed: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"detail": str(e)}
-        )
-
-# Aggiungi middleware per gestione errori
 @app.middleware("http")
 async def errors_handling(request: Request, call_next):
     try:
@@ -57,10 +66,6 @@ async def errors_handling(request: Request, call_next):
             status_code=500,
             content={"detail": str(e)}
         )
-
-# Configura il logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 @app.on_event("startup")
 async def startup_event():
