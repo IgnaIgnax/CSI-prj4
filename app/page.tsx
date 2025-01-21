@@ -113,7 +113,7 @@ export default function HomePage() {
       
       console.log('Sending payload:', payload) // Debug
 
-      const response = await fetch('http://localhost:8000/analyze', {
+      const response = await fetch('http://localhost:8080/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
