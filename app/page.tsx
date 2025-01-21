@@ -113,12 +113,13 @@ export default function HomePage() {
       
       console.log('Sending payload:', payload) // Debug
 
-      const response = await fetch('https://bloodbytes-production.up.railway.app/analyze', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
         }, 
+        mode: 'cors',
         body: JSON.stringify(payload)
       })
 
@@ -178,16 +179,6 @@ export default function HomePage() {
     const normalizedValue = value.replace(',', '.');
     const numValue = parseFloat(normalizedValue);
     if (isNaN(numValue)) return false;
-    
-    if (field === 'Blood_Creatinina') {
-      console.log('Checking creatinine danger range:', {
-        field,
-        value,
-        normalizedValue,
-        numValue,
-        sex: values.sex
-      });
-    }
     
     switch (field) {
       case 'Blood_Ferro':
