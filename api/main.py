@@ -107,6 +107,9 @@ def get_age_range_file(age: int) -> str:
 @app.post("/analyze", response_model=List[FoodRecommendation])
 async def analyze_blood_values(params: BloodParameters):
     try:
+        logger.info("Starting analysis with parameters:")
+        logger.info(params)
+        
         # Validate age
         if not 10 <= params.age <= 95:
             raise HTTPException(status_code=400, detail="L'età deve essere compresa tra 10 e 95 anni")
@@ -116,11 +119,15 @@ async def analyze_blood_values(params: BloodParameters):
             raise HTTPException(status_code=400, detail="Il sesso deve essere 'M' o 'F'")
 
         # Load models
+        logger.info("Loading models...")
         rf_good, rf_bad, scaler = load_models()
+        logger.info("Models loaded successfully")
         
-        # Get food data based on age
+        # Get food data
+        logger.info(f"Getting food data for age {params.age}")
         food_file = get_age_range_file(params.age)
         food_data = pd.read_excel(food_file)
+        logger.info(f"Food data loaded: {len(food_data)} rows")
         
         # Prepare features
         feature_order = [
@@ -200,11 +207,11 @@ async def analyze_blood_values(params: BloodParameters):
             logger.info("Created recommendation:")
             logger.info(recommendations[-1])
         
+        logger.info("Analysis completed successfully")
         return recommendations
         
     except Exception as e:
-        logger.error("Error details:")
-        logger.error(str(e))  # Aggiungi questo log
+        logger.error(f"Error during analysis: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
