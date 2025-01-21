@@ -12,12 +12,42 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Permette tutte le origini temporaneamente
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=3600,  # Cache delle opzioni preflight per 1 ora
+    allow_headers=["*"]
 )
+
+@app.on_event("startup")
+async def startup_event():
+    """Verifica all'avvio che tutti i file necessari siano presenti"""
+    try:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        models_dir = os.path.join(current_dir, 'models')
+        food_dir = os.path.join(current_dir, 'food')
+        
+        print(f"Current directory: {current_dir}")
+        print(f"Models directory: {models_dir}")
+        print(f"Food directory: {food_dir}")
+        
+        # Verifica modelli
+        required_models = ['rf_good_model.joblib', 'rf_bad_model.joblib', 'scaler.joblib']
+        for model in required_models:
+            path = os.path.join(models_dir, model)
+            if not os.path.exists(path):
+                raise Exception(f"Model file not found: {path}")
+            print(f"Found model: {path}")
+            
+        # Verifica file Excel
+        required_excel = ['10-19.xlsx', '20-64.xlsx', '65-80.xlsx', '81-95.xlsx']
+        for excel in required_excel:
+            path = os.path.join(food_dir, excel)
+            if not os.path.exists(path):
+                raise Exception(f"Excel file not found: {path}")
+            print(f"Found Excel file: {path}")
+            
+    except Exception as e:
+        print(f"Startup error: {str(e)}")
+        raise e
 
 class BloodParameters(BaseModel):
     age: int
