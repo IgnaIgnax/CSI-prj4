@@ -5,6 +5,7 @@ import joblib
 import pandas as pd
 from typing import Dict, List
 import os
+import logging
 
 app = FastAPI()
 
@@ -17,6 +18,10 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+# Configura il logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 @app.on_event("startup")
 async def startup_event():
     """Verifica all'avvio che tutti i file necessari siano presenti"""
@@ -25,9 +30,16 @@ async def startup_event():
         models_dir = os.path.join(current_dir, 'models')
         food_dir = os.path.join(current_dir, 'food')
         
-        print(f"Current directory: {current_dir}")
-        print(f"Models directory: {models_dir}")
-        print(f"Food directory: {food_dir}")
+        logger.info(f"Starting application...")
+        logger.info(f"Current directory: {current_dir}")
+        logger.info(f"Models directory: {models_dir}")
+        logger.info(f"Food directory: {food_dir}")
+        
+        # Lista i contenuti delle directory
+        logger.info("Directory contents:")
+        logger.info(f"Current dir: {os.listdir(current_dir)}")
+        logger.info(f"Models dir: {os.listdir(models_dir)}")
+        logger.info(f"Food dir: {os.listdir(food_dir)}")
         
         # Verifica modelli
         required_models = ['rf_good_model.joblib', 'rf_bad_model.joblib', 'scaler.joblib']
@@ -35,7 +47,7 @@ async def startup_event():
             path = os.path.join(models_dir, model)
             if not os.path.exists(path):
                 raise Exception(f"Model file not found: {path}")
-            print(f"Found model: {path}")
+            logger.info(f"Found model: {path}")
             
         # Verifica file Excel
         required_excel = ['10-19.xlsx', '20-64.xlsx', '65-80.xlsx', '81-95.xlsx']
@@ -43,10 +55,10 @@ async def startup_event():
             path = os.path.join(food_dir, excel)
             if not os.path.exists(path):
                 raise Exception(f"Excel file not found: {path}")
-            print(f"Found Excel file: {path}")
+            logger.info(f"Found Excel file: {path}")
             
     except Exception as e:
-        print(f"Startup error: {str(e)}")
+        logger.error(f"Startup error: {str(e)}")
         raise e
 
 class BloodParameters(BaseModel):
@@ -66,7 +78,7 @@ def load_models():
     current_dir = os.path.dirname(os.path.abspath(__file__))  # ottiene la directory api/
     models_dir = os.path.join(current_dir, 'models')  # usa models dentro api/
     
-    print(f"Loading model from: {models_dir}")
+    logger.info(f"Loading model from: {models_dir}")
     
     try:
         rf_good = joblib.load(os.path.join(models_dir, 'rf_good_model.joblib'))
@@ -74,7 +86,7 @@ def load_models():
         scaler = joblib.load(os.path.join(models_dir, 'scaler.joblib'))
         return rf_good, rf_bad, scaler
     except Exception as e:
-        print(f"Error loading models: {str(e)}")
+        logger.error(f"Error loading models: {str(e)}")
         raise
 
 def get_age_range_file(age: int) -> str:
@@ -167,10 +179,14 @@ async def analyze_blood_values(params: BloodParameters):
             )
             
             # Aggiungi log prima di creare la raccomandazione
-            print("Food row:", food_row)
-            print("Good prediction:", good_predictions[i])
-            print("Bad prediction:", bad_predictions[i])
-            print("CODE value:", food_row['CODE'])
+            logger.info("Food row:")
+            logger.info(food_row)
+            logger.info("Good prediction:")
+            logger.info(good_predictions[i])
+            logger.info("Bad prediction:")
+            logger.info(bad_predictions[i])
+            logger.info("CODE value:")
+            logger.info(food_row['CODE'])
             
             recommendations.append(FoodRecommendation(
                 food=str(food_row['Food']),        # Forza la conversione a stringa
@@ -181,12 +197,14 @@ async def analyze_blood_values(params: BloodParameters):
             ))
             
             # Aggiungi log dopo
-            print("Created recommendation:", recommendations[-1])
+            logger.info("Created recommendation:")
+            logger.info(recommendations[-1])
         
         return recommendations
         
     except Exception as e:
-        print("Error details:", str(e))  # Aggiungi questo log
+        logger.error("Error details:")
+        logger.error(str(e))  # Aggiungi questo log
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
