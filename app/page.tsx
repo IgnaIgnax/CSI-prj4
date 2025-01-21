@@ -75,6 +75,13 @@ export default function HomePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Controlla se ci sono valori pericolosi
+    if (hasDangerValues()) {
+      alert("Non è possibile procedere con l'analisi quando sono presenti valori critici. Si prega di consultare un medico.");
+      return;
+    }
+
     setLoading(true)
 
     try {
