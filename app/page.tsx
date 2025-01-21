@@ -18,6 +18,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { AnalysisResults, FoodRecommendation } from "./components/analysis-results"
 import Image from "next/image"
+import axios from 'axios'
 
 interface BloodValues {
   Blood_Colesterolo: number
@@ -110,25 +111,13 @@ export default function HomePage() {
       
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       console.log('Sending request to:', `${apiUrl}/analyze`);
-      console.log('Payload:', payload);
       
-      const response = await fetch(`${apiUrl}/analyze`, {
-        method: 'POST',
+      const { data } = await axios.post(`${apiUrl}/analyze`, payload, {
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Origin': 'https://bloodbytes.vercel.app'
-        },
-        mode: 'cors',
-        body: JSON.stringify(payload)
+        }
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
       const filteredRecommendations = filterFoodsByDietAndAllergies(data, values.diet, values.allergies);
       setRecommendations(filteredRecommendations);
       setShowResults(true);

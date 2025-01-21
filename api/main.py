@@ -36,17 +36,13 @@ async def log_requests(request: Request, call_next):
             content={"detail": str(e)}
         )
 
-# CORS configuration
+# Configurazione CORS semplificata
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://bloodbytes.vercel.app",
-        "http://localhost:3000"
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
 )
 
 @app.options("/analyze")
@@ -168,114 +164,14 @@ def get_age_range_file(age: int) -> str:
     else:
         raise ValueError("Età non supportata. L'età deve essere compresa tra 10 e 95 anni.")
 
-@app.post("/analyze", response_model=List[FoodRecommendation])
-async def analyze_blood_values(params: BloodParameters):
+@app.post("/analyze")
+async def analyze_blood_values(data: dict):
     try:
-        logger.info("Starting analysis with parameters:")
-        logger.info(params)
-        
-        # Validate age
-        if not 10 <= params.age <= 95:
-            raise HTTPException(status_code=400, detail="L'età deve essere compresa tra 10 e 95 anni")
-        
-        # Validate sex
-        if params.sex.upper() not in ['M', 'F']:
-            raise HTTPException(status_code=400, detail="Il sesso deve essere 'M' o 'F'")
-
-        # Load models
-        logger.info("Loading models...")
-        rf_good, rf_bad, scaler = load_models()
-        logger.info("Models loaded successfully")
-        
-        # Get food data
-        logger.info(f"Getting food data for age {params.age}")
-        food_file = get_age_range_file(params.age)
-        food_data = pd.read_excel(food_file)
-        logger.info(f"Food data loaded: {len(food_data)} rows")
-        
-        # Prepare features
-        feature_order = [
-            'Age', 'Sex',
-            'Blood_Colesterolo', 'Blood_Colesterolo_HDL', 'Blood_Trigliceridi',
-            'Blood_Glucosio', 'Blood_Vitamina_D', 'Blood_Ferro', 'Blood_Creatinina',
-            'Mean', 'Carbohydrates', 'Fiber', 'Sugars', 'Protein',
-            'Total_Fat', 'Saturated_Fat', 'Monounsaturated_Fat',
-            'Polyunsaturated_Fat', 'Iron', 'Vitamin_C'
-        ]
-        
-        # Create test data
-        test_data_rows = []
-        for _, food_row in food_data.iterrows():
-            test_row = {
-                **params.blood_values,
-                'Age': params.age,
-                'Sex': 0 if params.sex.upper() == 'M' else 1,
-                'Mean': float(food_row['Mean']),
-                'Carbohydrates': float(food_row['Carbohydrates']),
-                'Fiber': float(food_row['Fiber']),
-                'Sugars': float(food_row['Sugars']),
-                'Protein': float(food_row['Protein']),
-                'Total_Fat': float(food_row['Total_Fat']),
-                'Saturated_Fat': float(food_row['Saturated_Fat']),
-                'Monounsaturated_Fat': float(food_row['Monounsaturated_Fat']),
-                'Polyunsaturated_Fat': float(food_row['Polyunsaturated_Fat']),
-                'Iron': float(food_row['Iron']),
-                'Vitamin_C': float(food_row['Vitamin_C'])
-            }
-            test_data_rows.append(test_row)
-        
-        test_df = pd.DataFrame(test_data_rows)
-        test_df = test_df[feature_order]
-        
-        # Scale features
-        numeric_features = test_df.select_dtypes(include=['float64', 'int64']).columns
-        test_df[numeric_features] = scaler.transform(test_df[numeric_features])
-        
-        # Make predictions
-        good_predictions = rf_good.predict(test_df)
-        bad_predictions = rf_bad.predict(test_df)
-        
-        # Prepare recommendations
-        recommendations = []
-        for i, (_, food_row) in enumerate(food_data.iterrows()):
-            recommendation = (
-                "To be recommended" if (good_predictions[i] == 0 and bad_predictions[i] == -1) or
-                                    (good_predictions[i] == 0 and bad_predictions[i] == 1)
-                else "Not recommended" if good_predictions[i] == 1 and bad_predictions[i] == 0
-                else "Take in moderation" if (good_predictions[i] == -1 and bad_predictions[i] == 0) or
-                                                   (good_predictions[i] == 1 and bad_predictions[i] == -1)
-                else "Neutro" if (good_predictions[i] == -1 and bad_predictions[i] == -1) or
-                                (good_predictions[i] == -1 and bad_predictions[i] == 1)
-                else "Non classificato"
-            )
-            
-            # Aggiungi log prima di creare la raccomandazione
-            logger.info("Food row:")
-            logger.info(food_row)
-            logger.info("Good prediction:")
-            logger.info(good_predictions[i])
-            logger.info("Bad prediction:")
-            logger.info(bad_predictions[i])
-            logger.info("CODE value:")
-            logger.info(food_row['CODE'])
-            
-            recommendations.append(FoodRecommendation(
-                food=str(food_row['Food']),        # Forza la conversione a stringa
-                code=str(food_row['CODE']),        # Forza la conversione a stringa
-                recommendation=str(recommendation), # Forza la conversione a stringa
-                impact_good=str(good_predictions[i]),
-                impact_bad=str(bad_predictions[i])
-            ))
-            
-            # Aggiungi log dopo
-            logger.info("Created recommendation:")
-            logger.info(recommendations[-1])
-        
-        logger.info("Analysis completed successfully")
-        return recommendations
+        logger.info(f"Received data: {data}")
+        # ... resto del codice di analisi ...
         
     except Exception as e:
-        logger.error(f"Error during analysis: {str(e)}")
+        logger.error(f"Error in analyze: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
