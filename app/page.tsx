@@ -76,53 +76,50 @@ export default function HomePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    const age = parseInt(values.age)
-    if (age < 10 || age > 95) {
-      alert('Age must be between 10 and 95 years.')
-      setShowResults(false)
-      setRecommendations([])
-      return
-    }
-
-    // Controlla se ci sono valori critici
-    const hasCriticalValues = Object.entries(values.bloodValues).some(
-      ([field, value]) => isDangerRange(field, value as string)
-    );
-
-    if (hasCriticalValues) {
-      alert('Warning: some values are outside the normal range. It is recommended to consult a doctor before proceeding with the analysis.')
-      setShowResults(false)
-      setRecommendations([])
-      return
-    }
-
     setLoading(true)
 
     try {
       const payload = {
         age: parseInt(values.age),
         sex: values.sex,
-        blood_values: Object.entries(values.bloodValues).reduce((acc, [key, value]) => ({
-          ...acc,
-          [key]: parseFloat(value as string)
-        }), {})
+        blood_values: {
+          Blood_Colesterolo: parseFloat(values.bloodValues.Blood_Colesterolo),
+          Blood_Colesterolo_HDL: parseFloat(values.bloodValues.Blood_Colesterolo_HDL),
+          Blood_Trigliceridi: parseFloat(values.bloodValues.Blood_Trigliceridi),
+          Blood_Glucosio: parseFloat(values.bloodValues.Blood_Glucosio),
+          Blood_Vitamina_D: parseFloat(values.bloodValues.Blood_Vitamina_D),
+          Blood_Ferro: parseFloat(values.bloodValues.Blood_Ferro),
+          Blood_Creatinina: parseFloat(values.bloodValues.Blood_Creatinina)
+        }
       }
-      
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      console.log('Sending request to:', `${apiUrl}/analyze`);
-      
-      const { data } = await axios.post(`${apiUrl}/analyze`, payload, {
+
+      // Crea una istanza di axios con configurazione base
+      const api = axios.create({
+        baseURL: process.env.NEXT_PUBLIC_API_URL,
+        timeout: 15000, // 15 secondi di timeout
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
       });
+
+      // Fai la richiesta
+      const { data } = await api.post('/analyze', payload);
 
       const filteredRecommendations = filterFoodsByDietAndAllergies(data, values.diet, values.allergies);
       setRecommendations(filteredRecommendations);
       setShowResults(true);
+
     } catch (error) {
-      console.error('Error details:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Axios error:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status
+        });
+      } else {
+        console.error('Error:', error);
+      }
       alert('An error occurred during the analysis. Please try again.');
     } finally {
       setLoading(false)
