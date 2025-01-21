@@ -45,12 +45,27 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+@app.options("/analyze")
+async def analyze_options():
+    return JSONResponse(
+        status_code=200,
+        content={"message": "OK"}
+    )
+
 @app.middleware("http")
 async def add_cors_headers(request: Request, call_next):
+    if request.method == "OPTIONS":
+        # Gestisci la richiesta OPTIONS direttamente
+        return JSONResponse(
+            status_code=200,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "*",
+                "Access-Control-Allow-Headers": "*",
+            },
+            content={"message": "OK"}
+        )
     response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "*"
     return response
 
 @app.middleware("http")
