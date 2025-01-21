@@ -92,7 +92,7 @@ export default function HomePage() {
         }
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}:8080/analyze`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/analyze`;
       console.log('Sending request to:', apiUrl);
       
       const response = await fetch(apiUrl, {
