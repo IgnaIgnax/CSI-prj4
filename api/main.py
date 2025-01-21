@@ -11,11 +11,12 @@ app = FastAPI()
 # Configura CORS prima di qualsiasi route
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://bloodbytes.vercel.app"],  # Esattamente il tuo dominio
+    allow_origins=["*"],  # Permette tutte le origini temporaneamente
     allow_credentials=True,
-    allow_methods=["*"],  # Permetti tutti i metodi
-    allow_headers=["*"],  # Permetti tutti gli headers
-    expose_headers=["*"],  # Esponi tutti gli headers
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,  # Cache delle opzioni preflight per 1 ora
 )
 
 class BloodParameters(BaseModel):
