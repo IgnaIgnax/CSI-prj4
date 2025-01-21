@@ -8,17 +8,14 @@ import os
 
 app = FastAPI()
 
-# Modifica la configurazione CORS per la produzione
+# Configura CORS prima di qualsiasi route
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # Per sviluppo locale
-        "https://bloodbytes.vercel.app",  # Il tuo dominio Vercel
-        # Aggiungi altri domini se necessario
-    ],
+    allow_origins=["https://bloodbytes.vercel.app"],  # Esattamente il tuo dominio
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],  # Aggiungi OPTIONS
-    allow_headers=["*"],  # Permetti tutti gli headers per il debug
+    allow_methods=["*"],  # Permetti tutti i metodi
+    allow_headers=["*"],  # Permetti tutti gli headers
+    expose_headers=["*"],  # Esponi tutti gli headers
 )
 
 class BloodParameters(BaseModel):
