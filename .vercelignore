@@ -1,4 +1,18 @@
-/api/models/
-/api/food/
+# Backend files
+/api/
+*.py
+requirements.txt
+Dockerfile
 *.joblib
 *.xlsx
+*.pkl
+__pycache__/
+*.pyc
+
+# Node modules and lock files
+/node_modules/
+package-lock.json
+
+# Specific folders
+/api/models/
+/api/food/
