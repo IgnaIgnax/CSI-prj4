@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import joblib
 import pandas as pd
 from typing import Dict, List
@@ -9,14 +10,31 @@ import logging
 
 app = FastAPI()
 
-# Configura CORS prima di qualsiasi route
+# Configura CORS con impostazioni più specifiche
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permette tutte le origini temporaneamente
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"]
+    allow_origins=["https://bloodbytes.vercel.app"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600
 )
+
+# Aggiungi middleware per gestione errori
+@app.middleware("http")
+async def errors_handling(request: Request, call_next):
+    try:
+        logger.info(f"Incoming request: {request.method} {request.url}")
+        response = await call_next(request)
+        logger.info(f"Response status: {response.status_code}")
+        return response
+    except Exception as e:
+        logger.error(f"Request error: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e)}
+        )
 
 # Configura il logging
 logging.basicConfig(level=logging.INFO)
