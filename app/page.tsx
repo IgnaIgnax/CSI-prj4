@@ -108,8 +108,12 @@ export default function HomePage() {
         }), {})
       }
       
-      // Usa la variabile d'ambiente per l'URL dell'API
+      // Log per debug
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      console.log('1. API URL:', apiUrl);
+      console.log('2. Payload:', JSON.stringify(payload, null, 2));
+      
+      console.log('3. Iniziando la richiesta fetch...');
       const response = await fetch(`${apiUrl}/analyze`, {
         method: 'POST',
         headers: {
@@ -117,24 +121,29 @@ export default function HomePage() {
           'Accept': 'application/json'
         }, 
         body: JSON.stringify(payload)
-      })
+      });
+      console.log('4. Status della risposta:', response.status);
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Server response:', errorText)
-        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`)
+        const errorText = await response.text();
+        console.error('5. Errore dal server:', errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
-      const data = await response.json()
-      console.log('Received data:', data) // Debug
+      const data = await response.json();
+      console.log('6. Dati ricevuti:', data);
       
       // Usa la nuova funzione che considera sia dieta che allergie
       const filteredRecommendations = filterFoodsByDietAndAllergies(data, values.diet, values.allergies);
       setRecommendations(filteredRecommendations);
       setShowResults(true);
     } catch (error) {
-      console.error('Error details:', error)
-      alert('An error occurred during the analysis. Please try again.')
+      console.error('7. Dettagli completi errore:', error);
+      if (error instanceof Error) {
+        console.error('8. Message:', error.message);
+        console.error('9. Stack:', error.stack);
+      }
+      alert('An error occurred during the analysis. Please try again.');
     } finally {
       setLoading(false)
     }
