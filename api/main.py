@@ -10,16 +10,22 @@ import logging
 
 app = FastAPI()
 
-# Configura CORS con impostazioni più specifiche
+# Configurazione CORS più permissiva possibile
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://bloodbytes.vercel.app"],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=3600
+    allow_origins=["*"],  # Permette tutte le origini
+    allow_credentials=False,  # Deve essere False quando allow_origins=["*"]
+    allow_methods=["*"],  # Permette tutti i metodi
+    allow_headers=["*"],  # Permette tutti gli headers
 )
+
+@app.middleware("http")
+async def add_cors_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
 
 # Aggiungi middleware per gestione errori
 @app.middleware("http")
