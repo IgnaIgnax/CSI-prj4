@@ -18,7 +18,6 @@ import Link from "next/link"
 import { useState } from "react"
 import { AnalysisResults, FoodRecommendation } from "./components/analysis-results"
 import Image from "next/image"
-import axios from 'axios'
 
 interface BloodValues {
   Blood_Colesterolo: number
@@ -93,33 +92,38 @@ export default function HomePage() {
         }
       }
 
-      // Crea una istanza di axios con configurazione base
-      const api = axios.create({
-        baseURL: process.env.NEXT_PUBLIC_API_URL,
-        timeout: 15000, // 15 secondi di timeout
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/analyze`;
+      console.log('Sending request to:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        mode: 'no-cors', // Importante: usa no-cors
+        cache: 'no-cache',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
+        },
+        body: JSON.stringify(payload)
       });
 
-      // Fai la richiesta
-      const { data } = await api.post('/analyze', payload);
+      if (!response.ok && response.status !== 0) { // Status 0 è normale con no-cors
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        console.log('Response not JSON, trying text');
+        const text = await response.text();
+        data = JSON.parse(text);
+      }
 
       const filteredRecommendations = filterFoodsByDietAndAllergies(data, values.diet, values.allergies);
       setRecommendations(filteredRecommendations);
       setShowResults(true);
 
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('Axios error:', {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status
-        });
-      } else {
-        console.error('Error:', error);
-      }
+      console.error('Error details:', error);
       alert('An error occurred during the analysis. Please try again.');
     } finally {
       setLoading(false)
